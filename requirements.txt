@@ -6,3 +6,6 @@ numpy
 seaborn
 scipy
 scikit-learn
+transformers==2.2.0
+bert-extractive-summarizer==0.7.1
+rouge

@@ -1,19 +1,19 @@
 
 import os
-for dirname, _, filenames in os.walk('/kaggle/input'):
-    for filename in filenames:
-        print(os.path.join(dirname, filename))
+# for dirname, _, filenames in os.walk('/kaggle/input'):
+#     for filename in filenames:
+#         print(os.path.join(dirname, filename))
 import numpy as np1 
 import pandas as pd 
 
 
+data_path = os.path.join(os.getcwd(),'data','extracted_data')
 
+filename1 = 'news_summary.csv'
+filename2 = 'news_summary_more.csv'
 
-filename1 = r'/kaggle/input/news-summary/news_summary.csv'
-filename2 = r'/kaggle/input/news-summary/news_summary_more.csv'
-
-df1 = pd.read_csv(filename1, encoding='iso-8859-1').reset_index(drop=True)
-df2 = pd.read_csv(filename2, encoding='iso-8859-1').reset_index(drop=True)
+df1 = pd.read_csv(os.path.join(data_path,filename1), encoding='iso-8859-1').reset_index(drop=True)
+df2 = pd.read_csv(os.path.join(data_path,filename2), encoding='iso-8859-1').reset_index(drop=True)
 df1.head()
 print(df2.shape)
 df2.head()
@@ -412,7 +412,7 @@ plt1.legend(loc='lower right')
 
 reverse_source_word_index = x_tk.index_word
 target_word_index = y_tk.word_index
-LSTM inference
+# LSTM inference
 def LSTM_inference(maximum_text_length, latent_dimension, encoder_input,
                                                  encoder_output,encoder_final_states,
                                                  decoder_input, decoder_output,decoder_embeding_layer,
@@ -707,9 +707,9 @@ for val in range(0, 3):
                                                            BiLSTM_encoder_model,BiLSTM_decoder_model))
     print()
 # Transformers
-!pip install transformers==2.2.0
-!pip install bert-extractive-summarizer==0.7.1
-!pip install rouge
+# !pip install transformers==2.2.0
+# !pip install bert-extractive-summarizer==0.7.1
+# !pip install rouge
 from summarizer import Summarizer,TransformerSummarizer
 bert_model = Summarizer()
 GPT2_model = TransformerSummarizer(transformer_type="GPT2",transformer_model_key="gpt2-medium")

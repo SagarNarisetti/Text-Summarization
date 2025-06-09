@@ -5,23 +5,6 @@ import os
 #         print(os.path.join(dirname, filename))
 import numpy as np1 
 import pandas as pd 
-
-
-data_path = os.path.join(os.getcwd(),'data','extracted_data')
-
-filename1 = 'news_summary.csv'
-filename2 = 'news_summary_more.csv'
-
-df1 = pd.read_csv(os.path.join(data_path,filename1), encoding='iso-8859-1').reset_index(drop=True)
-df2 = pd.read_csv(os.path.join(data_path,filename2), encoding='iso-8859-1').reset_index(drop=True)
-df1.head()
-print(df2.shape)
-df2.head()
-df1=df1[['headlines','text']]
-df=df = pd.concat([df1, df2], axis='rows')
-print(df.shape)
-df.head()
-df_raw=df.copy()
 import matplotlib.pyplot as plt1
 
 import string
@@ -41,6 +24,24 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
 import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+
+data_path = os.path.join(os.getcwd(),'data','extracted_data')
+
+filename1 = 'news_summary.csv'
+filename2 = 'news_summary_more.csv'
+
+df1 = pd.read_csv(os.path.join(data_path,filename1), encoding='iso-8859-1').reset_index(drop=True)
+df2 = pd.read_csv(os.path.join(data_path,filename2), encoding='iso-8859-1').reset_index(drop=True)
+# df1.head()
+# print(df2.shape)
+# df2.head()
+df1=df1[['headlines','text']]
+df = pd.concat([df1, df2], axis='index')
+# print(df.shape)
+# df.head()
+df_raw=df.copy()
+
 
 # Removal of the  punctuation from words
 def remove_punctuation(word):
@@ -370,7 +371,7 @@ def LSTM_Model_build(embeding_dimension, latent_dimension, maximum_text_length,
           'layers': {
               'decoder': {
                   'embedding': decoder_embeding_layer,
-                  'last_decoder_lstm': decoder_lstm,
+                  'last_decoder_lstm': decoder_lstm_layer,
                   'dense': decoder_dense}}
               }
 LSTM_seq2seq = LSTM_Model_build(embeding_dimension, latent_dimension, maximum_text_length,x_vocab_size, y_vocab_size)

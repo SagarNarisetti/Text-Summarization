@@ -17,6 +17,9 @@ from sklearn.model_selection import train_test_split
 import unicodedata
 from random import randint
 from wordcloud import WordCloud
+import tensorflow
+from tensorflow.keras.layers import TextVectorization
+
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle

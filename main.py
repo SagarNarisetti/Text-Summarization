@@ -7,14 +7,12 @@ import numpy as np1
 import pandas as pd 
 import matplotlib.pyplot as plt1
 
-import string
 from tensorflow.keras import Input, Model
 import re as re2
 
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 
-import unicodedata
 from random import randint
 from wordcloud import WordCloud
 import tensorflow
@@ -22,17 +20,14 @@ from tensorflow.keras.layers import TextVectorization
 
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import pickle
 import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-
 
 # relaive imports
 from src.utils import remove_punctuation, remove_punctuation_from_text, remove_number_from_text, remove_stopwords,sequence_to_summary, sequence_to_text
 from src.extras import contractions
 from src.utils import handle_contractions,clean_text, trim_text_and_summary, rare_words_metrics
-from src.model_build import LSTM_Model_build, LSTM_inference, \
-    LSTM_decode_sequence, Bidirectional_LSTM_build, Bidirectional_LSTM_inference, Bidirectional_LSTM_decode
+from src.model_build import LSTM_Model_build, LSTM_inference, LSTM_decode_sequence, Bidirectional_LSTM_build, Bidirectional_LSTM_inference, Bidirectional_LSTM_decode
 
 
 
@@ -52,8 +47,8 @@ df = pd.concat([df1, df2], axis='index')
 # df.head()
 df_raw=df.copy()
 
-df.headlines = df.headlines.apply(handle_contractions)
-df.text = df.text.apply(handle_contractions)
+df.headlines = df.headlines.apply(handle_contractions, args = (contractions,))
+df.text = df.text.apply(handle_contractions, args = (contractions,))
 df.text = df.text.apply(clean_text)
 df.headlines = df.headlines.apply(clean_text)
 df.tail(5)
@@ -212,8 +207,15 @@ LSTM_decoder_model.summary()
 for val in range(0, 2):
     print(f"# {val+1} News: ", sequence_to_text(x_val_padded[val], reverse_source_word_index))
     print("Original_Summary: ", sequence_to_summary(y_val_padded[val], target_word_index, reverse_target_word_index, start_token, end_token))
-    print("Predicted_Summary: ", LSTM_decode_sequence(x_val_padded[val].reshape(1, maximum_text_length), LSTM_encoder_model,
-                                                      LSTM_decoder_model, maximum_summary_length))
+    print("Predicted_Summary: ", LSTM_decode_sequence(
+        x_val_padded[val].reshape(1, maximum_text_length),
+        LSTM_encoder_model,
+        LSTM_decoder_model,
+        reverse_target_word_index,
+        target_word_index,
+        maximum_summary_length,
+        )
+          )
     print()
 
 Biseq2seq = Bidirectional_LSTM_build(embeding_dimension, latent_dimension, maximum_text_length,x_vocab_size, y_vocab_size)
@@ -265,55 +267,62 @@ print(BiLSTM_decoder_model.summary())
 for val in range(0, 3):
     print(f"# {val+1} Text: ", sequence_to_text(x_val_padded[val]))
     print("Original_summary: ", sequence_to_summary(y_val_padded[val],start_token, end_token))
-    print("Predicted_summary: ", Bidirectional_LSTM_decode(x_val_padded[val].reshape(1, maximum_text_length),
-                                                           BiLSTM_encoder_model,BiLSTM_decoder_model, maximum_summary_length))
+    print("Predicted_summary: ", Bidirectional_LSTM_decode(
+        x_val_padded[val].reshape(1, maximum_text_length),
+        BiLSTM_encoder_model,
+        BiLSTM_decoder_model,
+        reverse_target_word_index,
+        target_word_index,
+        maximum_summary_length
+    )
+          )
     print()
 
 
 # Transformers
 
-from summarizer import Summarizer,TransformerSummarizer
-bert_model = Summarizer()
-GPT2_model = TransformerSummarizer(transformer_type="GPT2",transformer_model_key="gpt2-medium")
-min_length_text = 40
-from rouge import Rouge
-from nltk.translate.bleu_score import sentence_bleu
-rouge=Rouge()
-LSTM_perdiction=[]
-BiLSTM_prediction=[]
-BERT_prediction=[]
-GPT2_prediction=[]
-ORIGINAL_text=[]
-ORIGINAL_summary=[]
-for i in range(0,1):
-    original_text=sequence_to_text(x_val_padded[i])
-    ORIGINAL_text.append(original_text)
-    print('#    original text : ',original_text)
+# from summarizer import Summarizer,TransformerSummarizer
+# bert_model = Summarizer()
+# GPT2_model = TransformerSummarizer(transformer_type="GPT2",transformer_model_key="gpt2-medium")
+# min_length_text = 40
+# from rouge import Rouge
+# from nltk.translate.bleu_score import sentence_bleu
+# rouge=Rouge()
+# LSTM_perdiction=[]
+# BiLSTM_prediction=[]
+# BERT_prediction=[]
+# GPT2_prediction=[]
+# ORIGINAL_text=[]
+# ORIGINAL_summary=[]
+# for i in range(0,1):
+#     original_text=sequence_to_text(x_val_padded[i])
+#     ORIGINAL_text.append(original_text)
+#     print('#    original text : ',original_text)
 
-    original_summary=sequence_to_summary(y_val_padded[i],start_token, end_token)
-    ORIGINAL_summary.append(original_summary)
-    print('#    original summary : ',original_summary)
+#     original_summary=sequence_to_summary(y_val_padded[i],start_token, end_token)
+#     ORIGINAL_summary.append(original_summary)
+#     print('#    original summary : ',original_summary)
 
-    gpt_2_summary=''.join(GPT2_model(sequence_to_text(x_val_padded[i]), min_length=min_length_text))
-    GPT2_prediction.append(gpt_2_summary)
-    print('#    GPT-2 summary : ',gpt_2_summary)
+#     gpt_2_summary=''.join(GPT2_model(sequence_to_text(x_val_padded[i]), min_length=min_length_text))
+#     GPT2_prediction.append(gpt_2_summary)
+#     print('#    GPT-2 summary : ',gpt_2_summary)
 
-    BERT_summary=''.join(bert_model(sequence_to_text(x_val_padded[i]), min_length=min_length_text))
-    BERT_prediction.append(BERT_summary)
-    print('#     BERT summary : ',BERT_summary)
+#     BERT_summary=''.join(bert_model(sequence_to_text(x_val_padded[i]), min_length=min_length_text))
+#     BERT_prediction.append(BERT_summary)
+#     print('#     BERT summary : ',BERT_summary)
 
-    LSTM_summary=LSTM_decode_sequence(x_val_padded[i].reshape(1, maximum_text_length),LSTM_encoder_model,LSTM_decoder_model, maximum_summary_length)
-    LSTM_perdiction.append(LSTM_summary)
-    print('#     LSTM summary : ',LSTM_summary)
+#     LSTM_summary=LSTM_decode_sequence(x_val_padded[i].reshape(1, maximum_text_length),LSTM_encoder_model,LSTM_decoder_model, maximum_summary_length)
+#     LSTM_perdiction.append(LSTM_summary)
+#     print('#     LSTM summary : ',LSTM_summary)
 
-    BiLSTM_summary=Bidirectional_LSTM_decode(x_val_padded[i].reshape(1,maximum_text_length),BiLSTM_encoder_model,BiLSTM_decoder_model, maximum_summary_length)
-    BiLSTM_prediction.append(BiLSTM_summary)
-    print('#   BiLSTM summary : ', BiLSTM_summary)
-rouge_LSTM=rouge.get_scores(LSTM_perdiction,ORIGINAL_summary)
-rouge_BiLSTM=rouge.get_scores(BiLSTM_prediction,ORIGINAL_summary)
-rouge_BERT=rouge.get_scores(BERT_prediction,ORIGINAL_summary)
-rouge_GPT2=rouge.get_scores(GPT2_prediction,ORIGINAL_summary)
-print('rouge_LSTM',rouge_LSTM)
-print('rouge_BiLSTM',rouge_BiLSTM)
-print('rouge_BERT',rouge_BERT)
-print('rouge_GPT2',rouge_GPT2)
+#     BiLSTM_summary=Bidirectional_LSTM_decode(x_val_padded[i].reshape(1,maximum_text_length),BiLSTM_encoder_model,BiLSTM_decoder_model, maximum_summary_length)
+#     BiLSTM_prediction.append(BiLSTM_summary)
+#     print('#   BiLSTM summary : ', BiLSTM_summary)
+# rouge_LSTM=rouge.get_scores(LSTM_perdiction,ORIGINAL_summary)
+# rouge_BiLSTM=rouge.get_scores(BiLSTM_prediction,ORIGINAL_summary)
+# rouge_BERT=rouge.get_scores(BERT_prediction,ORIGINAL_summary)
+# rouge_GPT2=rouge.get_scores(GPT2_prediction,ORIGINAL_summary)
+# print('rouge_LSTM',rouge_LSTM)
+# print('rouge_BiLSTM',rouge_BiLSTM)
+# print('rouge_BERT',rouge_BERT)
+# print('rouge_GPT2',rouge_GPT2)

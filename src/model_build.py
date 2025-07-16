@@ -1,7 +1,8 @@
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import LSTM, Bidirectional, Dense, Embedding, TimeDistributed
 import numpy as np1
-from ..main import start_token, end_token, target_word_index, reverse_target_word_index
+import tensorflow as tf
+from src.utils import extract_yml
 
 def LSTM_Model_build(embeding_dimension, latent_dimension, maximum_text_length,
                                        x_vocab_size, y_vocab_size):
@@ -101,7 +102,14 @@ def LSTM_inference(maximum_text_length, latent_dimension, encoder_input,
 
 
 
-def LSTM_decode_sequence(input_sequence, encoder_model, decoder_model, maximum_summary_length=None):
+def LSTM_decode_sequence(
+        input_sequence,
+        encoder_model,
+        decoder_model,
+        reverse_target_word_index,
+        target_word_index,
+        maximum_summary_length=None
+        ):
     # Encoding the input values as state value vectors.
     Encoder_Out_, encoder_hidden, e_c = encoder_model.predict(input_sequence)
 
@@ -109,7 +117,7 @@ def LSTM_decode_sequence(input_sequence, encoder_model, decoder_model, maximum_s
     target_seq = np1.zeros((1, 1))
 
     # adding the first value of target sentence with the start word.
-    target_seq[0, 0] = target_word_index[start_token]
+    target_seq[0, 0] = target_word_index[extract_yml('Start_Token')]
 
     stop_condition = False
     decoded_sequence = ''
@@ -121,11 +129,11 @@ def LSTM_decode_sequence(input_sequence, encoder_model, decoder_model, maximum_s
         sample_tok_idx = np1.argmax(output_tokens[0, -1, :])
         sample_token_value = reverse_target_word_index[sample_tok_idx]
 
-        if sample_token_value != end_token:
+        if sample_token_value != extract_yml('End_Token'):
             decoded_sequence += ' ' + sample_token_value
 
         # condition for exiting while either it hits maximum lenght or find the stop word
-        if (sample_token_value == end_token) or (len(decoded_sequence.split()) >= (maximum_summary_length - 1)):
+        if (sample_token_value == extract_yml('End_Token')) or (len(decoded_sequence.split()) >= (maximum_summary_length - 1)):
             stop_condition = True
 
         # Update the unit value target sequence with sampled token index
@@ -257,7 +265,12 @@ def Bidirectional_LSTM_inference(
     return (encoder_model, decoder_model)
 
 
-def Bidirectional_LSTM_decode(input_sequence, encoder_model, decoder_model, maximum_summary_length):
+def Bidirectional_LSTM_decode(input_sequence,
+                              encoder_model,
+                              decoder_model,
+                              reverse_target_word_index,
+                              target_word_index,
+                              maximum_summary_length):
     # Encoding the input_values as state vectors.
     Encoder_Out_, *state_values = encoder_model.predict(input_sequence)
     
@@ -265,7 +278,7 @@ def Bidirectional_LSTM_decode(input_sequence, encoder_model, decoder_model, maxi
     target_seq = np1.zeros((1, 1))
 
     # filling the first word of the target sequence with start_word.
-    target_seq[0, 0] = target_word_index[start_token]
+    target_seq[0, 0] = target_word_index[extract_yml('Start_Token')]
 
     stop_condition = False
     decoded_sequence = ''
@@ -279,11 +292,11 @@ def Bidirectional_LSTM_decode(input_sequence, encoder_model, decoder_model, maxi
         sample_tok_idx = np1.argmax(output_tokens[0, -1, :]) # Greedy Search
         sample_token_value = reverse_target_word_index[sample_tok_idx + 1]
         
-        if sample_token_value != end_token:
+        if sample_token_value != extract_yml('End_Token'):
             decoded_sequence += ' ' + sample_token_value
 
         
-        if (sample_token_value == end_token) or (len(decoded_sequence.split()) >= (maximum_summary_length - 1)):
+        if (sample_token_value == extract_yml('End_Token')) or (len(decoded_sequence.split()) >= (maximum_summary_length - 1)):
             stop_condition = True
 
         # Updating the target sequence of UNIT value.

@@ -3,9 +3,19 @@ import numpy as np1
 import pandas as pd 
 import string
 from nltk.corpus import stopwords
+import yaml
+import unicodedata
 
 
 
+
+def extract_yml(yml_output:str):
+    with open("src/conf.yml") as stream:
+        try:
+            file = yaml.safe_load(stream)
+            return file[yml_output]
+        except yaml.YAMLError as exc:
+            return print(exc)
 
 
 # Removal of the  punctuation from words
@@ -166,3 +176,4 @@ def sequence_to_text(input_sequence, reverse_source_word_index):
         if val != 0:
             new_string = new_string + reverse_source_word_index[val] + ' '
     return new_string
+

@@ -274,8 +274,7 @@ for val in range(0, 3):
         reverse_target_word_index,
         target_word_index,
         maximum_summary_length
-    )
-          )
+    ))
     print()
 
 

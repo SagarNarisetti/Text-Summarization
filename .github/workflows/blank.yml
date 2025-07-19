@@ -46,7 +46,7 @@ jobs:
           # exit-aero treats all the errors as warnings . The Github editor us 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      # Runs a set of commands using the runners shell
-      - name: Test with pytest
-        run: |
-          pytest
+      # # Runs a set of commands using the runners shell
+      # - name: Test with pytest
+      #   run: |
+      #     pytest

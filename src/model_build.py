@@ -2,7 +2,7 @@ from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import LSTM, Bidirectional, Dense, Embedding, TimeDistributed
 import numpy as np1
 import tensorflow as tf
-from src.utils import extract_yml
+from src.helpers import extract_yml
 
 
 class Lstm_class:
@@ -75,7 +75,9 @@ class Lstm_class:
                              decoder_model,
                              reverse_target_word_index,
                              target_word_index,
-                             maximum_summary_length=None
+                             start_token,
+                             end_token,
+                             maximum_summary_length=None,
                              ):
         # Encoding the input values as state value vectors.
         Encoder_Out_, encoder_hidden, e_c = encoder_model.predict(input_sequence)
@@ -84,23 +86,24 @@ class Lstm_class:
         target_seq = np1.zeros((1, 1))
 
         # adding the first value of target sentence with the start word.
-        target_seq[0, 0] = target_word_index[extract_yml('Start_Token')]
+        target_seq[0, 0] = target_word_index[start_token]
 
         stop_condition = False
         decoded_sequence = ''
 
         while not stop_condition:
-            output_tokens, h, c = decoder_model.predict([target_seq] + [Encoder_Out_, encoder_hidden, e_c])
+            output_tokens, h, c = decoder_model.predict([target_seq, encoder_hidden, e_c])
 
-            # Sampling  the  token
+            # Sampling the token
             sample_tok_idx = np1.argmax(output_tokens[0, -1, :])
-            sample_token_value = reverse_target_word_index[sample_tok_idx]
+            # sample_token_value = reverse_target_word_index[sample_tok_idx]
+            sample_token_value = reverse_target_word_index.get(sample_tok_idx, '<UNK>')
 
-            if sample_token_value != extract_yml('End_Token'):
+            if sample_token_value != end_token:
                 decoded_sequence += ' ' + sample_token_value
 
             # condition for exiting while either it hits maximum length or find the stop word
-            if (sample_token_value == extract_yml('End_Token')) or (
+            if (sample_token_value == end_token) or (
                     len(decoded_sequence.split()) >= (maximum_summary_length - 1)):
                 stop_condition = True
 
@@ -132,25 +135,31 @@ class Lstm_class:
         # Decoder setup
         # Below variavles will save the states of the previous step
         decoder_h_state_input = Input(shape=(latent_dimension,))
-        decoder_c_state_input_ = Input(shape=(latent_dimension,))
+        decoder_c_state_input = Input(shape=(latent_dimension,))
         decoder_hidden_input_state = Input(shape=(maximum_text_length, latent_dimension))
 
         # Get the embedding values of the decoding sequence
         decoder_embedding = decoder_embeding_layer(decoder_input)
 
+        # To predict the next word in the sequence, set the initial
         # setting the initial states to previous time steps to forecast the next values in the sequence
-        decoder_output, *decoder_states = last_decoder_lstm(decoder_embedding,
+        decoder_output, decoder_h_state_output, decoder_c_state_output = last_decoder_lstm(decoder_embedding,
                                                             initial_state=[decoder_h_state_input,
-                                                                           decoder_c_state_input_])
+                                                                           decoder_c_state_input])
 
-        # A dense layer with softmax activation  to generate probobaility distribution over the target vocablary
+        # A dense layer with softmax activation to generate probobaility distribution over the target vocablary
         decoder_output = decoder_dense(decoder_output)
+        # decoder_hidden_output_state = Input(shape=(maximum_text_length, latent_dimension))
 
-        # Final model for decoder_sequence
-        decoder_model = Model([decoder_input] + [decoder_hidden_input_state,decoder_h_state_input, decoder_c_state_input_],
-                              [decoder_output] + decoder_states)
+        # # Final model for decoder_sequence
+        # decoder_model = Model(inputs=[decoder_input] + [decoder_hidden_input_state,decoder_h_state_input,decoder_c_state_input_],
+        #                       outputs = [decoder_output] + decoder_states)
 
-        return (encoder_model, decoder_model)
+        decoder_model = Model(
+            inputs=[decoder_input, decoder_h_state_input, decoder_c_state_input],
+            outputs=[decoder_output, decoder_h_state_output, decoder_c_state_output]
+        )
+        return encoder_model, decoder_model
 
 
 class BidiLSTM:
@@ -261,7 +270,7 @@ class BidiLSTM:
 
         # Create the hidden_input layer two times  the latent dimension,
         # As we are using Bidirectional LSTM we will get two of the hidden and cell states
-        decoder_hidden_input_state = Input(shape=(maximum_text_length, latent_dimension * 2))
+        # decoder_hidden_input_state = Input(shape=(maximum_text_length, latent_dimension * 2))
 
         decoder_initial_state = [decoder_state_forward_input_h,
                                  decoder_state_forward_input_c,
@@ -278,10 +287,12 @@ class BidiLSTM:
         decoder_output = decoder_dense(decoder_output)
 
         # Final decoder model
-        decoder_model = Model([decoder_input] + [decoder_hidden_input_state] + decoder_initial_state,
+        # decoder_model = Model([decoder_input] + [decoder_hidden_input_state] + decoder_initial_state,
+        #                       [decoder_output] + decoder_states)
+        decoder_model = Model([decoder_input] + decoder_initial_state,
                               [decoder_output] + decoder_states)
 
-        return (encoder_model, decoder_model)
+        return encoder_model, decoder_model
 
     def Bidirectional_LSTM_decode(self,
                                   input_sequence,
@@ -289,32 +300,35 @@ class BidiLSTM:
                                   decoder_model,
                                   reverse_target_word_index,
                                   target_word_index,
+                                  start_token,
+                                  end_token,
                                   maximum_summary_length):
         # Encoding the input_values as state vectors.
         Encoder_Out_, *state_values = encoder_model.predict(input_sequence)
 
-        # generating empty target sequence of unit values.
+        # generating an empty target sequence of unit values.
         target_seq = np1.zeros((1, 1))
 
         # filling the first word of the target sequence with start_word.
-        target_seq[0, 0] = target_word_index[extract_yml('Start_Token')]
+        target_seq[0, 0] = target_word_index[start_token]
 
         stop_condition = False
         decoded_sequence = ''
 
         while not stop_condition:
-            output_tokens, *decoder_states = decoder_model.predict(
-                [target_seq] + [Encoder_Out_] + state_values
-            )
+            # output_tokens, *decoder_states = decoder_model.predict(
+            #     [target_seq] + [Encoder_Out_] + state_values
+            # )
+            output_tokens, *decoder_states = decoder_model.predict([target_seq] + state_values)
 
             # Sampling a token
             sample_tok_idx = np1.argmax(output_tokens[0, -1, :])  # Greedy Search
             sample_token_value = reverse_target_word_index[sample_tok_idx + 1]
 
-            if sample_token_value != extract_yml('End_Token'):
+            if sample_token_value != end_token:
                 decoded_sequence += ' ' + sample_token_value
 
-            if (sample_token_value == extract_yml('End_Token')) or (
+            if (sample_token_value == end_token) or (
                     len(decoded_sequence.split()) >= (maximum_summary_length - 1)):
                 stop_condition = True
 

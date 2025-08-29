@@ -13,11 +13,13 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 # Relative imports
-from src.utils import remove_punctuation, remove_punctuation_from_text, remove_number_from_text, remove_stopwords,sequence_to_summary, sequence_to_text
+from src.utils import remove_punctuation, remove_punctuation_from_text, remove_number_from_text, remove_stopwords, \
+    sequence_to_summary, sequence_to_text, max_length_percentage
 from src.extras import contractions
-from src.utils import handle_contractions,clean_text, trim_text_and_summary, rare_words_metrics, extract_yml
+from src.utils import (handle_contractions,clean_text, trim_text_and_summary, rare_words_metrics)
+from src.helpers import extract_yml
 from src.model_build import Lstm_class, BidiLSTM
-from src.utils import plot
+from src.helpers import plot
 
 
 data_path = os.path.join(os.getcwd(),'data','extracted_data')
@@ -57,13 +59,6 @@ df.headlines = df.headlines.apply(lambda x: f'{yml_file["Start_Token"]} {x} {yml
 
 
 # maximum text and summary lengths
-def max_length_percentage(data,number):
-    d=0
-    for i1 in data:
-        if len(i1.split())<=number:
-            d=d+1
-    percentge=round(d/len(data),2)
-    return percentge
 max_length_percentage(df.text,yml_file["maximum_text_length"]),max_length_percentage(df.headlines,yml_file["maximum_summary_length"])
 # select the summary and text between their defined max lens respectively
 df = trim_text_and_summary(df, yml_file["maximum_text_length"], yml_file["maximum_summary_length"])
@@ -106,7 +101,7 @@ y_val_sequence = y_tk.texts_to_sequences(y_val)
 y_train_padded = pad_sequences(y_train_sequence, maxlen=yml_file["maximum_summary_length"], padding='post')
 y_val_padded = pad_sequences(y_val_sequence, maxlen=yml_file["maximum_summary_length"], padding='post')
 
-# if you're not using num_words parameter in Tokenizer then use this
+# if you're not using num_words parameter in Tokenizer, then use this
 y_vocab_size = len(y_tk.word_index) + 1
 
 # else use this
@@ -140,7 +135,11 @@ for val in range(len(y_val_padded)):
 y_val_padded=np1.delete(y_val_padded,remove_ind_validation, axis=0)
 x_val_padded=np1.delete(x_val_padded,remove_ind_validation, axis=0)
 
-# LSTM
+# index to word _dictionary
+reverse_target_word_index = y_tk.index_word
+reverse_source_word_index = x_tk.index_word
+target_word_index = y_tk.word_index
+
 lstm = Lstm_class()
 
 LSTM_seq2seq = lstm.LSTM_Model_build(yml_file['embeding_dimension'], yml_file['latent_dimension'], yml_file["maximum_text_length"],x_vocab_size, y_vocab_size)
@@ -170,24 +169,8 @@ LSTM_history = LSTM_model.fit([x_train_padded, y_train_padded[:, :-1]],
                               validation_data=([x_val_padded, y_val_padded[:, :-1]],y_val_padded.reshape(y_val_padded.shape[0], y_val_padded.shape[1], 1)[:, 1:])
                               )
 
-# index to word _dictionary
-reverse_target_word_index = y_tk.index_word
-# Accuracy
-# plt1.plot(LSTM_history.history['accuracy'][1:], label='train acc')
-# plt1.plot(LSTM_history.history['val_accuracy'], label='val')
-# plt1.xlabel('Epoch')
-# plt1.ylabel('Accuracy')
-# plt1.legend(loc='lower right')
-# # Loss
-# plt1.plot(LSTM_history.history['loss'][1:], label='train loss')
-# plt1.plot(LSTM_history.history['val_loss'], label='val')
-# plt1.xlabel('number of Epoch')
-# plt1.ylabel('losses during training')
-# plt1.legend(loc='lower right')
-plot(LSTM_history, placement='lower right')
 
-reverse_source_word_index = x_tk.index_word
-target_word_index = y_tk.word_index
+# plot(LSTM_history, placement='lower right')
 
 LSTM_encoder_model, LSTM_decoder_model = lstm.LSTM_inference(yml_file["maximum_text_length"],
                                                              yml_file['latent_dimension'],
@@ -198,20 +181,27 @@ LSTM_encoder_model, LSTM_decoder_model = lstm.LSTM_inference(yml_file["maximum_t
                                                              decoder_output,
                                                              decoder_embeding_layer,
                                                              decoder_dense,
-                                                             last_decoder_lstm
-                                                             )
+                                                             last_decoder_lstm)
+path = "./models"
+if not os.path.exists(path):
+    os.makedirs(path,exist_ok=True)
+LSTM_model.save('models/lstm.h5')
+
 LSTM_encoder_model.summary()
 LSTM_decoder_model.summary()
+
 
 # Testing on validation data
 for val in range(0, 2):
     print(f"# {val+1} News: ", sequence_to_text(x_val_padded[val], reverse_source_word_index))
-    print("Original_Summary: ", sequence_to_summary(y_val_padded[val], target_word_index, reverse_target_word_index, yml_file['start_token'], yml_file["end_token"]))
+    print("Original_Summary: ", sequence_to_summary(y_val_padded[val], target_word_index, reverse_target_word_index, yml_file['Start_Token'], yml_file["End_Token"]))
     print("Predicted_Summary: ", lstm.LSTM_decode_sequence(x_val_padded[val].reshape(1, yml_file["maximum_text_length"]),
                                                            LSTM_encoder_model,
                                                            LSTM_decoder_model,
                                                            reverse_target_word_index,
                                                            target_word_index,
+                                                           yml_file["Start_Token"],
+                                                           yml_file["End_Token"],
                                                            yml_file["maximum_summary_length"],
                                                            ))
 
@@ -219,6 +209,7 @@ for val in range(0, 2):
 
 # Bidirectional LSTM's
 BiLSTM = BidiLSTM()
+
 Biseq2seq = BiLSTM.Bidirectional_LSTM_build(yml_file['embeding_dimension'], yml_file['latent_dimension'], yml_file["maximum_text_length"],x_vocab_size, y_vocab_size)
 Bi_LSTM_model = Biseq2seq['model']
 
@@ -245,20 +236,7 @@ Bi_LSTM_history = Bi_LSTM_model.fit([x_train_padded, y_train_padded[:, :-1]],
                                     epochs=yml_file['num_of_epochs'],batch_size= 64,callbacks=callbacks,
                                     validation_data=([x_val_padded, y_val_padded[:, :-1]],y_val_padded.reshape(y_val_padded.shape[0], y_val_padded.shape[1], 1)[:, 1:]))
 
-
-# Accuracy
-# plt1.plot(Bi_LSTM_history.history['accuracy'][1:], label='train acc')
-# plt1.plot(Bi_LSTM_history.history['val_accuracy'], label='val')
-# plt1.xlabel('Number of Epochs')
-# plt1.ylabel('Accuracy_score')
-# plt1.legend(loc='lower right')
-# # Loss
-# plt1.plot(Bi_LSTM_history.history['loss'][1:], label='train loss')
-# plt1.plot(Bi_LSTM_history.history['val_loss'], label='val')
-# plt1.xlabel('Number of Epochs')
-# plt1.ylabel('Loss_values')
-# plt1.legend(loc='lower right')
-plot(Bi_LSTM_history,placement='lower right')
+# plot(Bi_LSTM_history,placement='lower right')
 
 # Inference
 BiLSTM_encoder_model, BiLSTM_decoder_model = BiLSTM.Bidirectional_LSTM_inference(yml_file["maximum_text_length"],
@@ -271,19 +249,23 @@ BiLSTM_encoder_model, BiLSTM_decoder_model = BiLSTM.Bidirectional_LSTM_inference
                                                                                  decoder_embeding_layer,
                                                                                  decoder_dense,
                                                                                  last_decoder_lstm)
+
 print(BiLSTM_encoder_model.summary())
 print(BiLSTM_decoder_model.summary())
 
 # Testing on validation data
 for val in range(0, 3):
-    print(f"# {val+1} Text: ", sequence_to_text(x_val_padded[val]))
-    print("Original_summary: ", sequence_to_summary(y_val_padded[val],yml_file['start_token'], yml_file["end_token"]))
+    print(f"# {val+1} Text: ", sequence_to_text(x_val_padded[val],reverse_source_word_index))
+    # print("Original_summary: ", sequence_to_summary(y_val_padded[val],yml_file['Start_Token'], yml_file["End_Token"]))
+    print("Original_summary: ", sequence_to_summary(y_val_padded[val], target_word_index, reverse_target_word_index, yml_file['Start_Token'], yml_file["End_Token"]))
     print("Predicted_summary: ", BiLSTM.Bidirectional_LSTM_decode(x_val_padded[val].reshape(1, yml_file["maximum_text_length"]),
                                                                   BiLSTM_encoder_model,
                                                                   BiLSTM_decoder_model,
                                                                   reverse_target_word_index,
                                                                   target_word_index,
-                                                                  yml_file["maximum_summary_length"]
+                                                                  yml_file["Start_Token"],
+                                                                  yml_file["End_Token"],
+                                                                  yml_file["maximum_summary_length"],
                                                                   ))
 
 

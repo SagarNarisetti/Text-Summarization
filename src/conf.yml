@@ -1,9 +1,16 @@
 Start_Token: sostok
 End_Token: eostok
 
-latent_dimension: 250
-embeding_dimension: 300
+#latent_dimension: 250
+#embeding_dimension: 300
+#num_of_epochs: 1
+
+latent_dimension: 25
+embeding_dimension: 30
 num_of_epochs: 1
 
-maximum_text_length: 43
-maximum_summary_length: 13
+#maximum_text_length: 43
+#maximum_summary_length: 13
+
+maximum_text_length: 45
+maximum_summary_length: 15

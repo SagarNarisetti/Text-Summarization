@@ -3,22 +3,12 @@ import numpy as np1
 import pandas as pd
 import string
 from nltk.corpus import stopwords
-import yaml
 import unicodedata
-import matplotlib.pyplot as plt
 
 
 
-def extract_yml():
-    with open("src/conf.yml") as stream:
-        try:
-            file = yaml.safe_load(stream)
-            return file
-        except yaml.YAMLError as exc:
-            return print(exc)
 
-
-# Removal of the  punctuation from words
+# Removal of the punctuation from words
 def remove_punctuation(word):
     cleaned_list = [value for value in word if value not in string.punctuation]
     return ''.join(cleaned_list)
@@ -182,16 +172,11 @@ def sequence_to_text(input_sequence, reverse_source_word_index):
             new_string = new_string + reverse_source_word_index[val] + ' '
     return new_string
 
-def plot(history,placement:str):
-    plt.plot(history.history['accuracy'][1:], label='train acc')
-    plt.plot(history.history['val_accuracy'], label='val')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.legend(loc='lower right')
-    # Loss
-    plt.plot(history.history['loss'][1:], label='train loss')
-    plt.plot(history.history['val_loss'], label='val')
-    plt.xlabel('number of Epoch')
-    plt.ylabel('losses during training')
-    plt.legend(loc=placement)
-    return plt.show()
+
+def max_length_percentage(data,number):
+    d=0
+    for i1 in data:
+        if len(i1.split())<=number:
+            d=d+1
+    percentage=round(d/len(data),2)
+    return percentage

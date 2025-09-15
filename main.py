@@ -185,10 +185,10 @@ LSTM_encoder_model, LSTM_decoder_model = lstm.LSTM_inference(yml_file["maximum_t
 path = "./models"
 if not os.path.exists(path):
     os.makedirs(path,exist_ok=True)
-LSTM_model.save('models/lstm.h5')
+LSTM_model.save('models/lstm.keras')
 
-LSTM_encoder_model.summary()
-LSTM_decoder_model.summary()
+# print(LSTM_encoder_model.summary())
+# print(LSTM_decoder_model.summary())
 
 
 # Testing on validation data
@@ -250,8 +250,13 @@ BiLSTM_encoder_model, BiLSTM_decoder_model = BiLSTM.Bidirectional_LSTM_inference
                                                                                  decoder_dense,
                                                                                  last_decoder_lstm)
 
-print(BiLSTM_encoder_model.summary())
-print(BiLSTM_decoder_model.summary())
+path = "./models"
+if not os.path.exists(path):
+    os.makedirs(path,exist_ok=True)
+Bi_LSTM_model.save('models/bilstm.keras')
+
+# print(BiLSTM_encoder_model.summary())
+# print(BiLSTM_decoder_model.summary())
 
 # Testing on validation data
 for val in range(0, 3):

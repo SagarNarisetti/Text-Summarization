@@ -13,5 +13,5 @@ tensorflow
 wordcloud
 nltk
 pyyaml==6.0.2
-tensorflow-macos
-tensorflow-metal
+#tensorflow-macos
+#tensorflow-metal

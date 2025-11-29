@@ -1,4 +1,4 @@
-### A Comparative Study of LSTMs and Transformers using Text Summarization
+### A Comparative Study of LSTMs and BiLSTMs using Text Summarization
 
 
 <!-- Abstract -->

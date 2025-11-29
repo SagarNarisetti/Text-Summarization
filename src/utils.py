@@ -120,13 +120,18 @@ def trim_text_and_summary(df, maximum_text_length, maximum_summary_length):
 
     for val in range(len(ctd)):
         if len(ctd[val].split()) <= maximum_text_length and len(
-                cleaned_summary_data[val].split()
-        ) <= maximum_summary_length:
+            cleaned_summary_data[val].split()
+            ) <= maximum_summary_length:
             mini_text.append(ctd[val])
             mini_summary.append(cleaned_summary_data[val])
-
     df = pd.DataFrame({'text': mini_text, 'summary': mini_summary})
     return df
+
+def trim_text_inference(text, maximum_text_length):
+    if len(text.split()) <= maximum_text_length:
+        return text
+    else:
+        return ' '.join(text.split()[:maximum_text_length])
 
 
 # calculating the rare words and other metrics

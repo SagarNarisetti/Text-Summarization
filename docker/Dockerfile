@@ -5,7 +5,6 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies for TensorFlow Metal on macOS is not required in container; 
-# container will likely run on Linux or cloud GPU/CPU device
 
 # Copy requirements file (create one listing your packages) and install Python dependencies
 COPY requirements.txt .

@@ -3,11 +3,14 @@ import os
 import numpy as np1 
 import pandas as pd 
 from sklearn.model_selection import train_test_split
+import pickle
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt1
 
 
-# tensorflow
+# tensorflow GPU configuration
+os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
+os.environ['TF_GPU_THREAD_COUNT'] = '1'
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -21,6 +24,9 @@ from src.helpers import extract_yml
 from src.model_build import Lstm_class, BidiLSTM
 from src.helpers import plot
 
+path = "./models"
+if not os.path.exists(path):
+    os.makedirs(path,exist_ok=True)
 
 data_path = os.path.join(os.getcwd(),'data','extracted_data')
 
@@ -49,8 +55,8 @@ df.headlines = df.headlines.apply(clean_text)
 # wc_summary = WordCloud(width=600,height=300).generate(' '.join(df.headlines))
 # plt1.imshow(wc_summary)
 
-df.headlines = df.headlines.apply(lambda x: f'_START_{x}_END_')
-df.headlines = df.headlines.apply(lambda x: f'{yml_file["Start_Token"]} {x} {yml_file["End_Token"]}')
+df.headlines = df.headlines.apply(lambda x: f'_START {x} END_')
+df.headlines = df.headlines.apply(lambda x: f'{yml_file["Start_Token"]}{x}{yml_file["End_Token"]}')
 
 # text_value_count = [len(val.split()) for val in df.text]
 # headlines_value_count = [len(val.split()) for val in df.headlines]
@@ -59,11 +65,11 @@ df.headlines = df.headlines.apply(lambda x: f'{yml_file["Start_Token"]} {x} {yml
 
 
 # maximum text and summary lengths
-max_length_percentage(df.text,yml_file["maximum_text_length"]),max_length_percentage(df.headlines,yml_file["maximum_summary_length"])
+print(max_length_percentage(df.text,yml_file["maximum_text_length"]),max_length_percentage(df.headlines,yml_file["maximum_summary_length"]))
 # select the summary and text between their defined max lens respectively
 df = trim_text_and_summary(df, yml_file["maximum_text_length"], yml_file["maximum_summary_length"])
 print(f'Dataset size: {len(df)}')
-df.sample(5)
+print(df.sample(5))
 
 # Splitting the training and validation sets
 x_train, x_val, y_train, y_val = train_test_split(np1.array(df['text']),np1.array(df['summary']),
@@ -76,6 +82,10 @@ x_tk.fit_on_texts(list(x_train))
 # one-hot-encoding
 x_train_sequence = x_tk.texts_to_sequences(x_train)
 x_val_sequence = x_tk.texts_to_sequences(x_val)
+
+# save the tokenizer
+with open('models/source_tokenizer.pkl', 'wb') as f:
+    pickle.dump(x_tk, f)
 
 # padd max length
 x_train_padded = pad_sequences(x_train_sequence, maxlen=yml_file["maximum_text_length"], padding='post')
@@ -93,9 +103,14 @@ y_tk.fit_on_texts(list(y_train))
 headlines_word_count,headlines_total_word_count=rare_words_metrics(y_tk,5)
 y_tk = Tokenizer(headlines_total_word_count-headlines_word_count)
 y_tk.fit_on_texts(list(y_train))
+
 # one-hot-encoding
 y_train_sequence = y_tk.texts_to_sequences(y_train)
 y_val_sequence = y_tk.texts_to_sequences(y_val)
+
+# save the tokenizer
+with open('models/target_tokenizer.pkl', 'wb') as f:
+    pickle.dump(y_tk, f)
 
 # padding upto maximum_summary_length
 y_train_padded = pad_sequences(y_train_sequence, maxlen=yml_file["maximum_summary_length"], padding='post')
@@ -182,10 +197,11 @@ LSTM_encoder_model, LSTM_decoder_model = lstm.LSTM_inference(yml_file["maximum_t
                                                              decoder_embeding_layer,
                                                              decoder_dense,
                                                              last_decoder_lstm)
-path = "./models"
-if not os.path.exists(path):
-    os.makedirs(path,exist_ok=True)
+
 LSTM_model.save('models/lstm.keras')
+LSTM_encoder_model.save('models/LSTM_encoder_model.keras')
+LSTM_decoder_model.save('models/LSTM_decoder_model.keras')
+
 
 # print(LSTM_encoder_model.summary())
 # print(LSTM_decoder_model.summary())
@@ -250,10 +266,10 @@ BiLSTM_encoder_model, BiLSTM_decoder_model = BiLSTM.Bidirectional_LSTM_inference
                                                                                  decoder_dense,
                                                                                  last_decoder_lstm)
 
-path = "./models"
-if not os.path.exists(path):
-    os.makedirs(path,exist_ok=True)
-Bi_LSTM_model.save('models/bilstm.keras')
+
+Bi_LSTM_model.save('models/bilstm_model.keras')
+BiLSTM_encoder_model.save('models/BiLSTM_encoder_model.keras')
+BiLSTM_decoder_model.save('models/BiLSTM_decoder_model.keras')
 
 # print(BiLSTM_encoder_model.summary())
 # print(BiLSTM_decoder_model.summary())

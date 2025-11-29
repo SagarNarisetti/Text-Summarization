@@ -1,7 +1,10 @@
+import os
+os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
+os.environ['TF_GPU_THREAD_COUNT'] = '1'
+import tensorflow as tf
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import LSTM, Bidirectional, Dense, Embedding, TimeDistributed
 import numpy as np1
-import tensorflow as tf
 from src.helpers import extract_yml
 
 
